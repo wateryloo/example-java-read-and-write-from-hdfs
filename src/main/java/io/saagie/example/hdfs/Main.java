@@ -1,3 +1,5 @@
+//java -jar example-java-read-and-write-from-hdfs-1.0-SNAPSHOT-jar-with-dependencies.jar hdfs://10.20.0.228:9000 /tmp/ssb/10_new_transformed/lineorder/ data-m-00001.txt
+
 package io.saagie.example.hdfs;
 
 
@@ -16,7 +18,7 @@ public class Main
 
   static
   {
-    System.loadLibrary("lib.so");
+    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
   }
 
   private static native void cMethod(byte[] arr);
@@ -49,12 +51,23 @@ public class Main
     //Create a path
     Path hdfsreadpath = new Path(path + "/" + fileName);
     //Init input stream
+    long t1 = System.currentTimeMillis();
     FSDataInputStream inputStream = fs.open(hdfsreadpath);
     //Classical input stream usage
     byte[] arr = IOUtils.toByteArray(inputStream);
     inputStream.close();
+    long t2 = System.currentTimeMillis();
     cMethod(arr);
-    logger.info("Read file complete.");
+    long t3 = System.currentTimeMillis();
+    logger.info("Passing data to JNI complete.");
+    String s0 = "java -jar example-java-read-and-write-from-hdfs-1.0-SNAPSHOT-jar-with-dependencies.jar hdfs://10.20.0.228:9000 /tmp/ssb/10_new_transformed/lineorder/ data-m-00001.txt\nThe size is approx. 530MB according to HADOOP web UI.";
+    logger.info(s0);
+    String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
+    logger.info(s1);
+    String s2 = String.format("Time to read from Java to JNI: %f sec.", (t3 - t2) / 1000.0);
+    logger.info(s2);
+    String s3 = String.format("Total time: %f sec.", (t3 - t1) / 1000.0);
+    logger.info(s3);
     fs.close();
 
   }
