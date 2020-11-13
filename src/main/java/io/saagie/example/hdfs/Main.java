@@ -3,15 +3,15 @@
 package io.saagie.example.hdfs;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
-//import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
 import java.net.URI;
 import java.util.logging.Logger;
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
@@ -27,19 +27,19 @@ import org.apache.orc.TypeDescription;
 public class Main
 {
 
-//  static
-//  {
-//    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
-//  }
-//
-//  private static native void cMethod(byte[] arr);
+  static
+  {
+    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
+  }
+
+  private static native void cMethod(byte[] arr);
 
   private static final Logger logger = Logger.getLogger("io.saagie.example.hdfs.Main");
 
   public static void main(String[] args) throws Exception
   {
     //HDFS URI
-    String hdfsuri = args[0];
+    String hdfsUri = args[0];
 
     String path = args[1];
     String fileName = args[2];
@@ -47,7 +47,7 @@ public class Main
     // ====== Init HDFS File System Object
     Configuration conf = new Configuration();
     // Set FileSystem URI
-    conf.set("fs.defaultFS", hdfsuri);
+    conf.set("fs.defaultFS", hdfsUri);
     // Because of Maven
     conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
     conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
@@ -55,7 +55,7 @@ public class Main
     System.setProperty("HADOOP_USER_NAME", "hdfs");
     System.setProperty("hadoop.home.dir", "/");
     //Get the filesystem - HDFS
-    FileSystem fs = FileSystem.get(URI.create(hdfsuri), conf);
+    FileSystem fs = FileSystem.get(URI.create(hdfsUri), conf);
 
     //==== Read file
 //    logger.info("Read file into hdfs");
@@ -68,11 +68,10 @@ public class Main
     inputStream.close();
     long t2 = System.currentTimeMillis();
     String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
+    logger.info(s1);
     fs.close();
 
     Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
-    TypeDescription typeDescription = reader.getSchema();
-//    System.out.println(typeDescription.toJson());
     RecordReader recordReader = reader.rows();
     TypeDescription schema = reader.getSchema();
 
@@ -85,9 +84,10 @@ public class Main
       typeNames.add(description.toString());
     }
     VectorizedRowBatch batch = reader.getSchema().createRowBatch();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     while (recordReader.nextBatch(batch))
     {
-      String col = batch.stringifyColumn(0);
       ColumnVector[] columnVectors = batch.cols;
       for (int i = 0; i < columnVectors.length; ++i)
       {
@@ -98,33 +98,60 @@ public class Main
           {
             LongColumnVector longColumnVector = (LongColumnVector) columnVectors[i];
             long[] data = longColumnVector.vector;
+            for (long val : data)
+            {
+              dataOutputStream.writeLong(val);
+            }
             break;
           }
           case "double":
           {
             DoubleColumnVector doubleColumnVector = (DoubleColumnVector) columnVectors[i];
             double[] data = doubleColumnVector.vector;
+            for (double val : data)
+            {
+              dataOutputStream.writeDouble(val);
+            }
             break;
           }
           case "string":
           {
             BytesColumnVector bytesColumnVector = (BytesColumnVector) columnVectors[i];
             byte[][] data = bytesColumnVector.vector;
+            for (byte[] val : data)
+            {
+              if (val != null)
+              {
+                dataOutputStream.write(val);
+              }
+              else
+              {
+                dataOutputStream.write('\0');
+              }
+            }
             break;
           }
           default:
-            logger.info("Known type!!!");
+            logger.info("Unknown type!!!");
             System.exit(-1);
         }
       }
+      dataOutputStream.flush();
     }
-//    System.out.println(batch.toString());
-//    recordReader.nextBatch(batch);
-//    System.out.println(batch.toString());
-//    while (recordReader.nextBatch(batch))
-//    {
-//      System.out.println(batch.toString());
-//    }
+    dataOutputStream.close();
+    byte[] bytes = byteArrayOutputStream.toByteArray();
+    byteArrayOutputStream.flush();
+    byteArrayOutputStream.close();
+    long t3 = System.currentTimeMillis();
+    String s3 = String.format("Time to prepare bytes array: %f sec.", (t3 - t2) / 1000.0);
+    logger.info(s3);
+    cMethod(bytes);
+    long t4 = System.currentTimeMillis();
+    String s2 = String.format("Time to transfer data: %f sec.", (t4 - t3) / 1000.0);
+    logger.info(s2);
+    String s4 = String
+        .format("Total data: %d bytes. Total time %f sec.", bytes.length, (t4 - t1) / 1000.0);
+    logger.info(s4);
     recordReader.close();
     reader.close();
   }
