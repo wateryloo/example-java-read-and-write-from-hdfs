@@ -5,9 +5,7 @@ package io.saagie.example.hdfs;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 //import org.apache.hadoop.fs.FSDataOutputStream;
@@ -18,11 +16,9 @@ import java.net.URI;
 import java.util.logging.Logger;
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.ColumnVector.Type;
 import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
-import org.apache.hadoop.hive.ql.io.orc.OrcFile.ReaderOptions;
 import org.apache.orc.OrcFile;
 import org.apache.orc.Reader;
 import org.apache.orc.RecordReader;
@@ -69,21 +65,9 @@ public class Main
     long t1 = System.currentTimeMillis();
     FSDataInputStream inputStream = fs.open(hdfsReadPath);
     //Classical input stream usage
-//    String s = IOUtils.toString(inputStream);
     inputStream.close();
-//    System.out.println(s);
     long t2 = System.currentTimeMillis();
-//    cMethod(arr);
-//    long t3 = System.currentTimeMillis();
-//    logger.info("Passing data to JNI complete.");
-//    String s0 = "java -jar example-java-read-and-write-from-hdfs-1.0-SNAPSHOT-jar-with-dependencies.jar hdfs://10.20.0.228:9000 /tmp/ssb/10_new_transformed/lineorder/ data-m-00001.txt\nThe size is approx. 530MB according to HADOOP web UI.";
-//    logger.info(s0);
     String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
-//    logger.info(s1);
-//    String s2 = String.format("Time to read from Java to JNI: %f sec.", (t3 - t2) / 1000.0);
-//    logger.info(s2);
-//    String s3 = String.format("Total time: %f sec.", (t3 - t1) / 1000.0);
-//    logger.info(s3);
     fs.close();
 
     Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
@@ -107,25 +91,30 @@ public class Main
       ColumnVector[] columnVectors = batch.cols;
       for (int i = 0; i < columnVectors.length; ++i)
       {
-        if (typeNames.get(i).equals("int") || typeNames.get(i).equals("bigint"))
+        switch (typeNames.get(i))
         {
-          LongColumnVector longColumnVector = (LongColumnVector) columnVectors[i];
-          long[] data = longColumnVector.vector;
-        }
-        else if (typeNames.get(i).equals("double"))
-        {
-          DoubleColumnVector doubleColumnVector = (DoubleColumnVector) columnVectors[i];
-          double[] data = doubleColumnVector.vector;
-        }
-        else if (typeNames.get(i).equals("string"))
-        {
-          BytesColumnVector bytesColumnVector = (BytesColumnVector) columnVectors[i];
-          byte[][] data = bytesColumnVector.vector;
-        }
-        else
-        {
-          logger.info("Known type!!!");
-          System.exit(-1);
+          case "int":
+          case "bigint":
+          {
+            LongColumnVector longColumnVector = (LongColumnVector) columnVectors[i];
+            long[] data = longColumnVector.vector;
+            break;
+          }
+          case "double":
+          {
+            DoubleColumnVector doubleColumnVector = (DoubleColumnVector) columnVectors[i];
+            double[] data = doubleColumnVector.vector;
+            break;
+          }
+          case "string":
+          {
+            BytesColumnVector bytesColumnVector = (BytesColumnVector) columnVectors[i];
+            byte[][] data = bytesColumnVector.vector;
+            break;
+          }
+          default:
+            logger.info("Known type!!!");
+            System.exit(-1);
         }
       }
     }
