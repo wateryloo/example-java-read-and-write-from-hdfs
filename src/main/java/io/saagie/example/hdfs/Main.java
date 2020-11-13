@@ -3,6 +3,10 @@
 package io.saagie.example.hdfs;
 
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -12,6 +16,15 @@ import org.apache.hadoop.fs.Path;
 
 import java.net.URI;
 import java.util.logging.Logger;
+import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.ColumnVector.Type;
+import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
+import org.apache.hadoop.hive.ql.io.orc.OrcFile.ReaderOptions;
+import org.apache.orc.OrcFile;
+import org.apache.orc.Reader;
+import org.apache.orc.RecordReader;
+import org.apache.orc.TypeDescription;
 
 public class Main
 {
@@ -47,16 +60,16 @@ public class Main
     FileSystem fs = FileSystem.get(URI.create(hdfsuri), conf);
 
     //==== Read file
-    logger.info("Read file into hdfs");
+//    logger.info("Read file into hdfs");
     //Create a path
-    Path hdfsreadpath = new Path(path + "/" + fileName);
+    Path hdfsReadPath = new Path(path + "/" + fileName);
     //Init input stream
     long t1 = System.currentTimeMillis();
-    FSDataInputStream inputStream = fs.open(hdfsreadpath);
+    FSDataInputStream inputStream = fs.open(hdfsReadPath);
     //Classical input stream usage
-    String s = IOUtils.toString(inputStream);
+//    String s = IOUtils.toString(inputStream);
     inputStream.close();
-    System.out.println(s);
+//    System.out.println(s);
     long t2 = System.currentTimeMillis();
 //    cMethod(arr);
 //    long t3 = System.currentTimeMillis();
@@ -64,12 +77,42 @@ public class Main
 //    String s0 = "java -jar example-java-read-and-write-from-hdfs-1.0-SNAPSHOT-jar-with-dependencies.jar hdfs://10.20.0.228:9000 /tmp/ssb/10_new_transformed/lineorder/ data-m-00001.txt\nThe size is approx. 530MB according to HADOOP web UI.";
 //    logger.info(s0);
     String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
-    logger.info(s1);
+//    logger.info(s1);
 //    String s2 = String.format("Time to read from Java to JNI: %f sec.", (t3 - t2) / 1000.0);
 //    logger.info(s2);
 //    String s3 = String.format("Total time: %f sec.", (t3 - t1) / 1000.0);
 //    logger.info(s3);
     fs.close();
 
+    Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
+    TypeDescription typeDescription = reader.getSchema();
+//    System.out.println(typeDescription.toJson());
+    RecordReader recordReader = reader.rows();
+    TypeDescription schema = reader.getSchema();
+
+    List<TypeDescription> typeDescriptions = schema.getChildren();
+    Iterator<TypeDescription> iterator = typeDescriptions.stream().iterator();
+    ArrayList<String> typeNames = new ArrayList<>();
+    while (iterator.hasNext())
+    {
+      TypeDescription description = iterator.next();
+      typeNames.add(description.toString());
+    }
+    VectorizedRowBatch batch = reader.getSchema().createRowBatch();
+    while (recordReader.nextBatch(batch))
+    {
+      String col = batch.stringifyColumn(0);
+      System.out.println(col);
+      break;
+    }
+//    System.out.println(batch.toString());
+//    recordReader.nextBatch(batch);
+//    System.out.println(batch.toString());
+//    while (recordReader.nextBatch(batch))
+//    {
+//      System.out.println(batch.toString());
+//    }
+    recordReader.close();
+    reader.close();
   }
 }
