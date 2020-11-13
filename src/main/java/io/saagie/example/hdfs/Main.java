@@ -16,8 +16,10 @@ import org.apache.hadoop.fs.Path;
 
 import java.net.URI;
 import java.util.logging.Logger;
+import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector.Type;
+import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.io.orc.OrcFile.ReaderOptions;
@@ -102,8 +104,30 @@ public class Main
     while (recordReader.nextBatch(batch))
     {
       String col = batch.stringifyColumn(0);
-      System.out.println(col);
-      break;
+      ColumnVector[] columnVectors = batch.cols;
+      for (int i = 0; i < columnVectors.length; ++i)
+      {
+        if (typeNames.get(i).equals("int") || typeNames.get(i).equals("bigint"))
+        {
+          LongColumnVector longColumnVector = (LongColumnVector) columnVectors[i];
+          long[] data = longColumnVector.vector;
+        }
+        else if (typeNames.get(i).equals("double"))
+        {
+          DoubleColumnVector doubleColumnVector = (DoubleColumnVector) columnVectors[i];
+          double[] data = doubleColumnVector.vector;
+        }
+        else if (typeNames.get(i).equals("string"))
+        {
+          BytesColumnVector bytesColumnVector = (BytesColumnVector) columnVectors[i];
+          byte[][] data = bytesColumnVector.vector;
+        }
+        else
+        {
+          logger.info("Known type!!!");
+          System.exit(-1);
+        }
+      }
     }
 //    System.out.println(batch.toString());
 //    recordReader.nextBatch(batch);
