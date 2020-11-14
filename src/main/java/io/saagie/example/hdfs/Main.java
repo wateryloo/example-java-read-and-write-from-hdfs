@@ -118,10 +118,13 @@ public class Main
       }
       cMethod(objects);
     }
+
     long t3 = System.currentTimeMillis();
     recordReader.close();
     reader.close();
     String s2 = String.format("Time to pass all data to JNI: %f sec.", (t3 - t2) / 1000.0);
     logger.info(s2);
+    String s3 = String.format("Total time: %f sec.", (t3 - t1) / 1000.0);
+    logger.info(s3);
   }
 }
