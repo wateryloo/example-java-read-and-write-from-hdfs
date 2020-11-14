@@ -3,8 +3,6 @@
 package io.saagie.example.hdfs;
 
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -32,7 +30,7 @@ public class Main
     System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
   }
 
-  private static native void cMethod(byte[] arr);
+  private static native void cMethod(Object[] arr);
 
   private static final Logger logger = Logger.getLogger("io.saagie.example.hdfs.Main");
 
@@ -70,7 +68,6 @@ public class Main
     String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
     logger.info(s1);
     fs.close();
-
     Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
     RecordReader recordReader = reader.rows();
     TypeDescription schema = reader.getSchema();
@@ -84,11 +81,10 @@ public class Main
       typeNames.add(description.toString());
     }
     VectorizedRowBatch batch = reader.getSchema().createRowBatch();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     while (recordReader.nextBatch(batch))
     {
       ColumnVector[] columnVectors = batch.cols;
+      Object[] objects = new Object[columnVectors.length];
       for (int i = 0; i < columnVectors.length; ++i)
       {
         switch (typeNames.get(i))
@@ -98,37 +94,21 @@ public class Main
           {
             LongColumnVector longColumnVector = (LongColumnVector) columnVectors[i];
             long[] data = longColumnVector.vector;
-            for (long val : data)
-            {
-              dataOutputStream.writeLong(val);
-            }
+            objects[i] = data;
             break;
           }
           case "double":
           {
             DoubleColumnVector doubleColumnVector = (DoubleColumnVector) columnVectors[i];
             double[] data = doubleColumnVector.vector;
-            for (double val : data)
-            {
-              dataOutputStream.writeDouble(val);
-            }
+            objects[i] = data;
             break;
           }
           case "string":
           {
             BytesColumnVector bytesColumnVector = (BytesColumnVector) columnVectors[i];
             byte[][] data = bytesColumnVector.vector;
-            for (byte[] val : data)
-            {
-              if (val != null)
-              {
-                dataOutputStream.write(val);
-              }
-              else
-              {
-                dataOutputStream.write('\0');
-              }
-            }
+            objects[i] = data;
             break;
           }
           default:
@@ -136,23 +116,12 @@ public class Main
             System.exit(-1);
         }
       }
-      dataOutputStream.flush();
+      cMethod(objects);
     }
-    dataOutputStream.close();
-    byte[] bytes = byteArrayOutputStream.toByteArray();
-    byteArrayOutputStream.flush();
-    byteArrayOutputStream.close();
     long t3 = System.currentTimeMillis();
-    String s3 = String.format("Time to prepare bytes array: %f sec.", (t3 - t2) / 1000.0);
-    logger.info(s3);
-    cMethod(bytes);
-    long t4 = System.currentTimeMillis();
-    String s2 = String.format("Time to transfer data: %f sec.", (t4 - t3) / 1000.0);
-    logger.info(s2);
-    String s4 = String
-        .format("Total data: %d bytes. Total time %f sec.", bytes.length, (t4 - t1) / 1000.0);
-    logger.info(s4);
     recordReader.close();
     reader.close();
+    String s2 = String.format("Time to pass all data to JNI: %f sec.", (t3 - t2) / 1000.0);
+    logger.info(s2);
   }
 }
