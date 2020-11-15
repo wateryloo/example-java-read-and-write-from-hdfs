@@ -55,6 +55,7 @@ public class Main
     {
       System.out.println(batch);
     }
-
+    recordReader.close();
+    reader.close();
   }
 }
