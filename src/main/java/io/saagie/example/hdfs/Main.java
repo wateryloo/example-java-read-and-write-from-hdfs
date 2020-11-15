@@ -4,11 +4,10 @@ package io.saagie.example.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.orc.OrcFile;
-import org.apache.orc.TypeDescription;
-import org.apache.orc.Writer;
+import org.apache.orc.Reader;
+import org.apache.orc.RecordReader;
 
 public class Main
 {
@@ -30,7 +29,6 @@ public class Main
 
     // ====== Init HDFS File System Object
     Configuration conf = new Configuration();
-    TypeDescription schema = TypeDescription.fromString("struct<col:bigint>");
     // Set FileSystem URI
     conf.set("fs.defaultFS", hdfsUri);
     // Because of Maven
@@ -49,25 +47,14 @@ public class Main
     //Init input stream
     //Classical input stream usage
 
-    VectorizedRowBatch inputRowBatch = new VectorizedRowBatch(1, 256 * 1024 * 1024);
-    inputRowBatch.selectedInUse = false;
-    inputRowBatch.selected = new int[256 * 1024 * 1024];
-    for (int i = 0; i < inputRowBatch.selected.length; ++i)
+    Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
+    RecordReader recordReader = reader.rows();
+    VectorizedRowBatch batch = reader.getSchema().createRowBatch();
+    System.out.println(batch);
+    while (recordReader.nextBatch(batch))
     {
-      inputRowBatch.selected[i] = i;
+      System.out.println(batch);
     }
-    LongColumnVector vector = new LongColumnVector();
-    vector.vector = new long[256 * 1024 * 1024];
-    for (int i = 0; i < vector.vector.length; ++i)
-    {
-      vector.vector[i] = (long) (100000.0 * Math.random());
-    }
-    inputRowBatch.cols[0] = vector;
-    Writer writer = OrcFile
-        .createWriter(hdfsReadPath, OrcFile.writerOptions(conf).setSchema(schema));
-    writer.addRowBatch(inputRowBatch);
-    inputRowBatch.reset();
-    writer.close();
 
   }
 }
