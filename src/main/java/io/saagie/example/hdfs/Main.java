@@ -3,14 +3,11 @@
 package io.saagie.example.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import java.net.URI;
-import java.util.logging.Logger;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.orc.OrcFile;
+import org.apache.orc.TypeDescription;
 import org.apache.orc.Writer;
 
 public class Main
@@ -23,8 +20,6 @@ public class Main
 //
 //  private static native void cMethod(Object[] arr);
 
-  private static final Logger logger = Logger.getLogger("io.saagie.example.hdfs.Main");
-
   public static void main(String[] args) throws Exception
   {
     //HDFS URI
@@ -35,6 +30,7 @@ public class Main
 
     // ====== Init HDFS File System Object
     Configuration conf = new Configuration();
+    TypeDescription schema = TypeDescription.fromString("struct<col:bigint>");
     // Set FileSystem URI
     conf.set("fs.defaultFS", hdfsUri);
     // Because of Maven
@@ -44,21 +40,14 @@ public class Main
     System.setProperty("HADOOP_USER_NAME", "hdfs");
     System.setProperty("hadoop.home.dir", "/");
     //Get the filesystem - HDFS
-    FileSystem fs = FileSystem.get(URI.create(hdfsUri), conf);
 
     //==== Read file
 //    logger.info("Read file into hdfs");
     //Create a path
     Path hdfsReadPath = new Path(path + "/" + fileName);
+
     //Init input stream
-    long t1 = System.currentTimeMillis();
-    FSDataInputStream inputStream = fs.open(hdfsReadPath);
     //Classical input stream usage
-    inputStream.close();
-    long t2 = System.currentTimeMillis();
-    String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
-    logger.info(s1);
-    fs.close();
 
     VectorizedRowBatch inputRowBatch = new VectorizedRowBatch(1, 256 * 1024 * 1024);
     inputRowBatch.selectedInUse = false;
@@ -73,10 +62,12 @@ public class Main
     {
       vector.vector[i] = (long) (100000.0 * Math.random());
     }
-    Writer writer = OrcFile.createWriter(hdfsReadPath, OrcFile.writerOptions(conf));
+    inputRowBatch.cols[0] = vector;
+    Writer writer = OrcFile
+        .createWriter(hdfsReadPath, OrcFile.writerOptions(conf).setSchema(schema));
     writer.addRowBatch(inputRowBatch);
+    inputRowBatch.reset();
     writer.close();
-
 
   }
 }
