@@ -49,15 +49,15 @@ public class Main
     //Init input stream
     //Classical input stream usage
 
-    VectorizedRowBatch inputRowBatch = new VectorizedRowBatch(1, 256 * 1024 * 1024);
+    VectorizedRowBatch inputRowBatch = new VectorizedRowBatch(1, 128 * 1024 * 1024);
     inputRowBatch.selectedInUse = false;
-    inputRowBatch.selected = new int[256 * 1024 * 1024];
+    inputRowBatch.selected = new int[128 * 1024 * 1024];
     for (int i = 0; i < inputRowBatch.selected.length; ++i)
     {
       inputRowBatch.selected[i] = i;
     }
     LongColumnVector vector = new LongColumnVector();
-    vector.vector = new long[256 * 1024 * 1024];
+    vector.vector = new long[128 * 1024 * 1024];
     for (int i = 0; i < vector.vector.length; ++i)
     {
       vector.vector[i] = (long) (100000.0 * Math.random());
