@@ -5,6 +5,8 @@ package io.saagie.example.hdfs;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +21,7 @@ import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.orc.OrcFile;
 import org.apache.orc.Reader;
 import org.apache.orc.RecordReader;
@@ -27,22 +30,31 @@ import org.apache.orc.TypeDescription;
 public class Main
 {
 
-  static
-  {
-    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
-  }
-
-  private static native void cMethod(byte[] arr);
+//  static
+//  {
+//    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
+//  }
+//
+//  private static native void cMethod(byte[] arr);
 
   private static final Logger logger = Logger.getLogger("io.saagie.example.hdfs.Main");
 
-  public static void main(String[] args) throws Exception
+  private static void readFromHdfs() throws IOException
+  {
+    String uri = "hdfs://10.20.0.228:9000/user/hdfs/example/hdfs/hello.csv";
+    Configuration configuration = new Configuration();//创建配置对象,封装了客户端或服务器的配置.
+    FileSystem fs = FileSystem.get(URI.create(uri), configuration);//获取FileSystem实例
+    InputStream in = fs.open(new Path(uri));//Path同Java中的File,但是不能替换使用.
+    IOUtils.copyBytes(in, System.out, 100, true);
+  }
+
+  private static void readHrcFromHdfs() throws Exception
   {
     //HDFS URI
-    String hdfsUri = args[0];
+    String hdfsUri = "";
 
-    String path = args[1];
-    String fileName = args[2];
+    String path = "";
+    String fileName = "";
 
     // ====== Init HDFS File System Object
     Configuration conf = new Configuration();
@@ -145,7 +157,6 @@ public class Main
     long t3 = System.currentTimeMillis();
     String s3 = String.format("Time to prepare bytes array: %f sec.", (t3 - t2) / 1000.0);
     logger.info(s3);
-    cMethod(bytes);
     long t4 = System.currentTimeMillis();
     String s2 = String.format("Time to transfer data: %f sec.", (t4 - t3) / 1000.0);
     logger.info(s2);
@@ -154,5 +165,10 @@ public class Main
     logger.info(s4);
     recordReader.close();
     reader.close();
+  }
+
+  public static void main(String[] args)
+  {
+
   }
 }
