@@ -23,6 +23,7 @@ public class Main
 
   /**
    * Get a file system from uri of HDFS.
+   *
    * @param hdfsUri The uri fo HDFS.
    * @return A file system of HDFS.
    * @throws IOException IOException.
@@ -40,7 +41,8 @@ public class Main
 
   /**
    * Read from HDFS.
-   * @param fs The file system.
+   *
+   * @param fs       The file system.
    * @param hdfsPath The path of text file in hdfs.
    * @return A string as output.
    * @throws IOException IOException.
@@ -53,7 +55,8 @@ public class Main
 
   /**
    * Read from HDFS.
-   * @param hdfsUri The URI of HDFS.
+   *
+   * @param hdfsUri  The URI of HDFS.
    * @param hdfsPath The path of file.
    * @throws IOException IOException.
    */
@@ -63,6 +66,18 @@ public class Main
 
     FileSystem fs = getFs(hdfsUri);
     System.out.println(readTextFromHdfs(fs, hdfsPath));
+  }
+
+  /**
+   * TODO: Read ORC from HDFS. The format of input and return is to be determined.
+   *
+   * @param fs       The file system.
+   * @param hdfsPath The path of ORC file.
+   * @throws IOException IOException.
+   */
+  private static void readOrcFromHdfs(FileSystem fs, String hdfsPath) throws IOException
+  {
+
   }
 
   /*
