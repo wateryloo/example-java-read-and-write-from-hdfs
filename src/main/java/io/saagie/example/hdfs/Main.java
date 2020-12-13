@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import java.net.URI;
-import org.apache.hadoop.io.IOUtils;
+import org.apache.commons.io.IOUtils;
 
 public class Main
 {
@@ -21,34 +21,48 @@ public class Main
   private static native void cMethod(byte[] arr);
    */
 
-  private static void readFromHdfs() throws IOException
+  /**
+   * Get a file system from uri of HDFS.
+   * @param hdfsUri The uri fo HDFS.
+   * @return A file system of HDFS.
+   * @throws IOException IOException.
+   */
+  private static FileSystem getFs(String hdfsUri) throws IOException
   {
-    //HDFS URI
-    String hdfsUri = "hdfs://10.20.0.228:9000";
-
-    String path = "/user/hdfs/example/hdfs";
-    String fileName = "hello.csv";
-
-    // ====== Init HDFS File System Object
     Configuration conf = new Configuration();
-    System.out.println("set conf");
-    // Set FileSystem URI
     conf.set("fs.defaultFS", hdfsUri);
-    // Because of Maven
     conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
     conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
-    // Set HADOOP user
     System.setProperty("HADOOP_USER_NAME", "hdfs");
     System.setProperty("hadoop.home.dir", "/");
-    //Get the filesystem - HDFS
-    FileSystem fs = FileSystem.get(URI.create(hdfsUri), conf);
+    return FileSystem.get(URI.create(hdfsUri), conf);
+  }
 
-    //==== Read file
-    //Create a path
-    Path hdfsReadPath = new Path(path + "/" + fileName);
-    FSDataInputStream inputStream = fs.open(hdfsReadPath);
-    inputStream.close();
-    fs.close();
+  /**
+   * Read from HDFS.
+   * @param fs The file system.
+   * @param hdfsPath The path of text file in hdfs.
+   * @return A string as output.
+   * @throws IOException IOException.
+   */
+  private static String readTextFromHdfs(FileSystem fs, String hdfsPath) throws IOException
+  {
+    FSDataInputStream inputStream = fs.open(new Path(hdfsPath));
+    return IOUtils.toString(inputStream);
+  }
+
+  /**
+   * Read from HDFS.
+   * @param hdfsUri The URI of HDFS.
+   * @param hdfsPath The path of file.
+   * @throws IOException IOException.
+   */
+  private static void testReadFromHdfs(String hdfsUri, String hdfsPath) throws IOException
+  {
+    //HDFS URI
+
+    FileSystem fs = getFs(hdfsUri);
+    System.out.println(readTextFromHdfs(fs, hdfsPath));
   }
 
   /*
@@ -84,7 +98,6 @@ public class Main
     inputStream.close();
     long t2 = System.currentTimeMillis();
     String s1 = String.format("Time to read from HDFS to Java: %f sec.", (t2 - t1) / 1000.0);
-    logger.info(s1);
     fs.close();
 
     Reader reader = OrcFile.createReader(hdfsReadPath, OrcFile.readerOptions(conf));
@@ -177,7 +190,9 @@ public class Main
     System.out.println("START");
     try
     {
-      readFromHdfs();
+      String hdfsUri = "hdfs://10.20.0.228:9000";
+      String hdfsPath = "/user/hdfs/example/hdfs/hello.csv";
+      testReadFromHdfs(hdfsUri, hdfsPath);
     } catch (IOException exception)
     {
       exception.printStackTrace();
