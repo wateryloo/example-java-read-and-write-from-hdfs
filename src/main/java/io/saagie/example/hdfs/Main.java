@@ -2,52 +2,56 @@
 
 package io.saagie.example.hdfs;
 
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import java.net.URI;
-import java.util.logging.Logger;
-import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.orc.OrcFile;
-import org.apache.orc.Reader;
-import org.apache.orc.RecordReader;
-import org.apache.orc.TypeDescription;
 
 public class Main
 {
 
-//  static
-//  {
-//    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
-//  }
-//
-//  private static native void cMethod(byte[] arr);
-
-  private static final Logger logger = Logger.getLogger("io.saagie.example.hdfs.Main");
+  /*
+  static
+  {
+    System.load("/home/spark/source/zjs_workspace/jni_read_profile/lib.so");
+  }
+  private static native void cMethod(byte[] arr);
+   */
 
   private static void readFromHdfs() throws IOException
   {
-    String uri = "hdfs://10.20.0.228:9000/user/hdfs/example/hdfs/hello.csv";
-    Configuration configuration = new Configuration();//创建配置对象,封装了客户端或服务器的配置.
-    FileSystem fs = FileSystem.get(URI.create(uri), configuration);//获取FileSystem实例
-    InputStream in = fs.open(new Path(uri));//Path同Java中的File,但是不能替换使用.
-    IOUtils.copyBytes(in, System.out, 100, true);
+    //HDFS URI
+    String hdfsUri = "hdfs://10.20.0.228:9000";
+
+    String path = "/user/hdfs/example/hdfs";
+    String fileName = "hello.csv";
+
+    // ====== Init HDFS File System Object
+    Configuration conf = new Configuration();
+    System.out.println("set conf");
+    // Set FileSystem URI
+    conf.set("fs.defaultFS", hdfsUri);
+    // Because of Maven
+    conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+    conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
+    // Set HADOOP user
+    System.setProperty("HADOOP_USER_NAME", "hdfs");
+    System.setProperty("hadoop.home.dir", "/");
+    //Get the filesystem - HDFS
+    FileSystem fs = FileSystem.get(URI.create(hdfsUri), conf);
+
+    //==== Read file
+    //Create a path
+    Path hdfsReadPath = new Path(path + "/" + fileName);
+    FSDataInputStream inputStream = fs.open(hdfsReadPath);
+    inputStream.close();
+    fs.close();
   }
 
+  /*
   private static void readHrcFromHdfs() throws Exception
   {
     //HDFS URI
@@ -166,9 +170,20 @@ public class Main
     recordReader.close();
     reader.close();
   }
+   */
 
   public static void main(String[] args)
   {
-
+    System.out.println("START");
+    try
+    {
+      readFromHdfs();
+    } catch (IOException exception)
+    {
+      exception.printStackTrace();
+    } finally
+    {
+      System.out.println("END");
+    }
   }
 }
